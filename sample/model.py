@@ -1,33 +1,11 @@
 import sys
 from collections import OrderedDict
-
+from pathlib import Path
 import numpy as np
 import torch
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
 from transformers import AlbertConfig, AlbertModel, BertTokenizer
-
-
-def convert_one_line(text_a, text_b, tokenizer):
-    inputs = tokenizer.encode_plus(text_a, text_b, return_tensors='pt')
-    token_ids = inputs['input_ids'][0]
-    token_types = inputs['token_type_ids'][0]
-    token_masks = inputs['attention_mask'][0]
-    return token_ids, token_types, token_masks
-
-
-def convert_batch(query, candidates, tokenizer):
-    token_ids, token_types, token_masks = [], [], []
-    for c in candidates:
-        token_id, token_type, token_mask = convert_one_line(
-            query, c, tokenizer)
-        token_ids.append(token_id)
-        token_types.append(token_type)
-        token_masks.append(token_mask)
-    token_ids = pad_sequence(token_ids, batch_first=True)
-    token_types = pad_sequence(token_types, batch_first=True, padding_value=1)
-    token_masks = pad_sequence(token_masks, batch_first=True)
-    return token_ids, token_types, token_masks
 
 
 def model_predict(query, candidates, model, tokenizer):
@@ -60,3 +38,5 @@ class PairModel(nn.Module):
         _, pooled_output = self.bert(inputs, masks, token_type)
         out = self.head(pooled_output)
         return out
+
+
