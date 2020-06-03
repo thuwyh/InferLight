@@ -1,27 +1,29 @@
+from asyncio import sleep
 from datetime import datetime
+from multiprocessing import Manager, Process
 from pathlib import Path
+from uuid import uuid4
 
 import torch
 from sanic import Sanic
 from sanic.log import logger
 from sanic.response import json, text
-from transformers import AlbertConfig, AlbertModel, BertTokenizer
 
-from albertqa import PairModel, model_predict
+from handler import batch_predict, load_model
+from worker import fake_predict, worker_function
 
-print("** loading model.. **")
-tokenizer = BertTokenizer.from_pretrained(
-    '../albert-small/', cache_dir=None, do_lower_case=True)
-bert_config = AlbertConfig.from_pretrained('../albert-small/')
-model = PairModel(config=bert_config)
-device = torch.device('cpu')
-state = torch.load(Path('../albert-small/pytorch_model.pt'),
-                   map_location=device)
-model.load_state_dict(state['model'])
-model.to(device)
-model.eval()
+manager = Manager()
+task_queue = manager.Queue()
+result_dict = manager.dict()
 
 app = Sanic("QA inference")
+p = Process(target=worker_function, args=(
+    task_queue, result_dict, load_model, batch_predict,), daemon=True)
+
+
+@app.listener('before_server_stop')
+async def notify_server_stopping(app, loop):
+    print('Server shutting down!')
 
 
 @app.route("/")
@@ -31,16 +33,24 @@ async def test(request):
 
 @app.route("/predict", methods=["POST"])
 async def predict(request):
-    query = request.json.get('query')
-    candidates = request.json.get('candidates')
-    since = datetime.now()
-    similarity = model_predict(query, candidates, model, tokenizer)
-    retval = {"result": [{"question": candidates[i],
-                          "score": str(similarity[i])} for i in range(len(candidates))]}
-    duration = ((datetime.now()-since).microseconds)/1000
-    logger.info('Prediction finished: %.3fms' % duration)
-    return json(retval)
+    text_a = request.json.get('text_a')
+    text_b = request.json.get('text_b')
+
+    uuid = str(uuid4())
+    task_data = {
+        "id": uuid,
+        "data": (text_a, text_b)
+    }
+    task_queue.put(task_data, False)
+    while True:
+        if uuid in result_dict:
+            result = result_dict[uuid]
+            result_dict.pop(uuid)
+            break
+        await sleep(0.005)
+    return json({"result": str(result)})
 
 
 if __name__ == "__main__":
+    p.start()
     app.run(host="0.0.0.0", port=8000)
