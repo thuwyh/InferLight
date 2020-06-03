@@ -1,20 +1,12 @@
 import sys
-import time
-import socket
-from argparse import ArgumentParser
 from collections import OrderedDict
-from json import dumps, loads, load
-from pathlib import Path
 
 import numpy as np
 import torch
-from redis import StrictRedis
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
-from tortoise import run_async
 from transformers import AlbertConfig, AlbertModel, BertTokenizer
+
 
 def convert_one_line(text_a, text_b, tokenizer):
     inputs = tokenizer.encode_plus(text_a, text_b, return_tensors='pt')
@@ -27,7 +19,8 @@ def convert_one_line(text_a, text_b, tokenizer):
 def convert_batch(query, candidates, tokenizer):
     token_ids, token_types, token_masks = [], [], []
     for c in candidates:
-        token_id, token_type, token_mask = convert_one_line(query, c, tokenizer)
+        token_id, token_type, token_mask = convert_one_line(
+            query, c, tokenizer)
         token_ids.append(token_id)
         token_types.append(token_type)
         token_masks.append(token_mask)
@@ -38,8 +31,9 @@ def convert_batch(query, candidates, tokenizer):
 
 
 def model_predict(query, candidates, model, tokenizer):
-    token_ids, token_types, token_masks = convert_batch(query, candidates, tokenizer)
-    
+    token_ids, token_types, token_masks = convert_batch(
+        query, candidates, tokenizer)
+
     with torch.no_grad():
         v_pred = model(token_ids, token_types, token_masks)
         v_pred = torch.sigmoid(v_pred)
@@ -53,7 +47,8 @@ class PairModel(nn.Module):
         if config is not None:
             self.bert = AlbertModel(config)
         else:
-            self.bert = AlbertModel.from_pretrained(pretrain_path, cache_dir=None, num_labels=1)
+            self.bert = AlbertModel.from_pretrained(
+                pretrain_path, cache_dir=None, num_labels=1)
         self.head = nn.Sequential(
             OrderedDict([
                 ('dropout', nn.Dropout(dropout)),
