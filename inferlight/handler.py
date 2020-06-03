@@ -2,11 +2,18 @@ from abc import ABC, abstractmethod
 
 class Handler(ABC):
 
+    def __init__(self):
+        self.load_model()
+
     @abstractmethod
-    def load_model(self, parameter_list):
+    def load_model(self, handler):
         """载入模型
         """
         raise NotImplementedError
+
+    # @abstractmethod
+    # def handle_http_request(self, request):
+    #     raise NotImplementedError
 
     @abstractmethod
     def batch_predict(self, batch_data):
@@ -18,8 +25,7 @@ class Handler(ABC):
         Returns:
             [array-like] -- [每个样本一个结果]
         """
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def predict(self, data):
         pass

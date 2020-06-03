@@ -30,7 +30,7 @@ def worker_function(task_queue, result_dict, handler):
                 pass
 
         if len(batch_data)>0:
-            batch_results = handler.predict_batch(batch_data)
+            batch_results = handler.batch_predict(batch_data)
             for idx in range(len(batch_results)):
                 task_queue.task_done()
                 result_dict[task_ids[idx]] = batch_results[idx]

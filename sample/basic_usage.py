@@ -1,5 +1,7 @@
+from asyncio import sleep
+from sanic.response import json
 from inferlight import app, InferLight
-from .handler import MyHandler
+from handler import MyHandler
 
 handler = MyHandler()
 light = InferLight(handler)
@@ -11,13 +13,13 @@ async def predict(request):
 
     task_id = light.put_task((text_a, text_b))
     while True:
-        result = light.get_result()
+        result = light.get_result(task_id)
         if result is not None:
             break
         await sleep(0.005)
     return json({"result": str(result)})
 
 if __name__ == "__main__":
-    light.start_service()
+    light.start_service(http_frontend=app)
 
 
