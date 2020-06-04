@@ -1,25 +1,20 @@
 from asyncio import sleep
 from sanic.response import json
-from inferlight import app, InferLight
+from inferlight import InferLight
 from handler import MyHandler
 
 handler = MyHandler()
 light = InferLight(handler)
 
-@app.route("/predict", methods=["POST"])
-async def predict(request):
+@light.http_data_dispatch_fn
+def dispatch_data(request):
     text_a = request.json.get('text_a')
     text_b = request.json.get('text_b')
-
-    task_id = light.put_task((text_a, text_b))
-    while True:
-        result = light.get_result(task_id)
-        if result is not None:
-            break
-        await sleep(0.005)
-    return json({"result": str(result)})
+    return (text_a, text_b)
+    
+light.register_http_endpoint('/predict', methods=['POST'])
 
 if __name__ == "__main__":
-    light.start_service(http_frontend=app)
+    light.start_service(http=True)
 
 
