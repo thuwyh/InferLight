@@ -88,7 +88,9 @@ if __name__=='__main__':
     @app.get('/batch_predict')
     async def batched_predict(request):
         dummy_input = text
-        result = await wrapped_model.predict(dummy_input)
-        return json_response({'output': result})
+        response = await wrapped_model.predict(dummy_input)
+        if not response.succeed():
+            return json_response({'output':None, 'status':'failed'})
+        return json_response({'output': response.result})
 
     app.run(port=8888)

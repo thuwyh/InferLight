@@ -7,7 +7,7 @@ from queue import Empty
 
 from cachetools import TTLCache
 
-from .status import InferStatus
+from .data import InferStatus, InferResponse
 
 
 class LightWrapper:
@@ -58,7 +58,7 @@ class LightWrapper:
             await asyncio.sleep(0.01)
         return self.result_cache[task_id]
 
-    async def predict(self, input, timeout=2):
+    async def predict(self, input, timeout=2) -> InferResponse:
         # generate unique task_id
         task_id = str(uuid.uuid4())
 
@@ -67,12 +67,6 @@ class LightWrapper:
         try:
             result = await asyncio.wait_for(self.get_result(task_id), timeout=timeout)
         except asyncio.TimeoutError:
-            return {
-                'status': InferStatus.TIMEOUT,
-                'result': None
-            }
+            return InferResponse(InferStatus.TIMEOUT, None)
 
-        return {
-            'status': InferStatus.SUCCEED,
-            'result': result
-        }
+        return InferResponse(InferStatus.SUCCEED, result)
