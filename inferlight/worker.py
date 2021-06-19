@@ -1,7 +1,8 @@
+import logging
 import multiprocessing as mp
 import time
 from queue import Empty
-import logging
+
 
 # Worker:
 # 1. read data from data queue and build batch
@@ -26,6 +27,7 @@ class BaseInferLightWorker:
             ready_event.set()
 
     def run(self):
+        self.logger.info('Worker started!')
         while True:
             data, task_ids = [], []
             since = time.time()
@@ -34,6 +36,7 @@ class BaseInferLightWorker:
                     d = self.data_queue.get(block=True, timeout=self.max_delay)
                     task_ids.append(d[0])
                     data.append(d[1])
+                    self.logger.info('get one new task')
                 except Empty:
                     pass
                 if time.time()-since>=self.max_delay:
@@ -58,7 +61,7 @@ class BaseInferLightWorker:
     def load_model(self, model_args):
         raise NotImplementedError
 
-    @staticmethod
-    def start(data_queue:mp.Queue, result_queue:mp.Queue, model_args:dict, batch_size=16, max_delay=0.1):
-        w = Worker(data_queue, result_queue, batch_size, max_delay)
+    @classmethod
+    def start(cls, data_queue:mp.Queue, result_queue:mp.Queue, model_args:dict, batch_size=16, max_delay=0.1,ready_event=None):
+        w = cls(data_queue, result_queue, model_args, batch_size, max_delay, ready_event)
         w.run()
